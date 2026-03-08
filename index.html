@@ -222,6 +222,13 @@ nav button.active { color: var(--accent); }
 .empty-state { text-align: center; padding: 60px 32px; color: var(--muted2); }
 .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
 .empty-state p { font-size: 0.75rem; line-height: 1.6; }
+.apikey-banner { background: linear-gradient(135deg,#1a1500,#1a0e00); border:1px solid var(--accent2); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color 0.2s; margin-bottom:10px; }
+.apikey-banner:hover { border-color:var(--accent); }
+.apikey-banner-text { flex:1; }
+.apikey-banner-title { font-size:0.7rem; color:var(--accent); letter-spacing:1px; }
+.apikey-banner-sub { font-size:0.58rem; color:var(--muted); margin-top:2px; }
+.apikey-set { border-color:#4caf7d !important; background:linear-gradient(135deg,#0d1a0d,#0d150d) !important; }
+.apikey-set .apikey-banner-title { color:#4caf7d !important; }
 </style>
 </head>
 <body>
@@ -315,6 +322,14 @@ nav button.active { color: var(--accent); }
           <span>3.</span> KI Analyse & Speichern
         </div>
         <div class="import-card-body">
+          <div class="apikey-banner" id="apikeyBanner" onclick="openApiKeyModal()">
+            <div>&#128273;</div>
+            <div class="apikey-banner-text">
+              <div class="apikey-banner-title" id="apikeyBannerTitle">API-KEY EINGEBEN</div>
+              <div class="apikey-banner-sub" id="apikeyBannerSub">Anthropic API-Key erforderlich</div>
+            </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
           <p style="font-size:0.65rem; color:var(--muted); line-height:1.6; margin-bottom:4px;">Die KI erkennt automatisch alle Gebäude, laufenden Meter und Details.</p>
           <button class="analyze-btn" id="analyzeBtn" onclick="analyzePhoto()" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
@@ -377,6 +392,21 @@ nav button.active { color: var(--accent); }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="apikeyModal">
+  <div class="modal">
+    <h2>API-Key</h2>
+    <p style="font-size:0.65rem; color:var(--muted); line-height:1.7; margin-bottom:14px;">Gib deinen Anthropic API-Key ein. Er wird nur lokal in deinem Browser gespeichert.<br><br>Key erstellen: <span style="color:var(--accent)">console.anthropic.com</span> &rarr; API Keys</p>
+    <div class="field-group">
+      <div class="field-label">Anthropic API-Key</div>
+      <input class="field-input" id="apikeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="document.getElementById('apikeyModal').classList.remove('open')">Abbrechen</button>
+      <button class="btn-confirm" onclick="saveApiKey()">Speichern</button>
+    </div>
+  </div>
+</div>
 
 <script>
 function load(k, def) { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? def; } catch { return def; } }
@@ -543,6 +573,34 @@ function createNewStandort() {
   renderStandorte(); showToast('Standort angelegt');
 }
 
+function getApiKey() { return localStorage.getItem('dr_api_key') || ''; }
+function openApiKeyModal() {
+  document.getElementById('apikeyInput').value = getApiKey();
+  document.getElementById('apikeyModal').classList.add('open');
+}
+function saveApiKey() {
+  const key = document.getElementById('apikeyInput').value.trim();
+  if (!key) return;
+  localStorage.setItem('dr_api_key', key);
+  document.getElementById('apikeyModal').classList.remove('open');
+  updateApiKeyBanner();
+  showToast('API-Key gespeichert ✓');
+}
+function updateApiKeyBanner() {
+  const key = getApiKey();
+  const banner = document.getElementById('apikeyBanner');
+  if (!banner) return;
+  if (key) {
+    banner.classList.add('apikey-set');
+    document.getElementById('apikeyBannerTitle').textContent = '✓ API-KEY GESETZT';
+    document.getElementById('apikeyBannerSub').textContent = '...' + key.slice(-6) + ' · Tippen zum Ändern';
+  } else {
+    banner.classList.remove('apikey-set');
+    document.getElementById('apikeyBannerTitle').textContent = 'API-KEY EINGEBEN';
+    document.getElementById('apikeyBannerSub').textContent = 'Anthropic API-Key erforderlich';
+  }
+}
+
 function refreshImportSelect() {
   const sel = document.getElementById('importStandortSelect');
   const cur = sel.value;
@@ -575,13 +633,15 @@ function handlePhoto(e) {
 
 async function analyzePhoto() {
   if (!photoBase64) return;
+  const apiKey = getApiKey();
+  if (!apiKey) { openApiKeyModal(); return; }
   const btn = document.getElementById('analyzeBtn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> WIRD ERKANNT...';
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514', max_tokens:1000,
         messages:[{role:'user', content:[
@@ -594,6 +654,7 @@ id=Gebäudenummer als String, meter=laufende Meter als Zahl, hoehe=Höhe als Str
       })
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'HTTP ' + res.status);
     const text = data.content?.map(c=>c.text||'').join('')||'';
     parsedBuildings = JSON.parse(text.replace(/```json|```/g,'').trim());
     document.getElementById('aiTableBody').innerHTML = parsedBuildings.map(b=>
@@ -603,7 +664,11 @@ id=Gebäudenummer als String, meter=laufende Meter als Zahl, hoehe=Höhe als Str
     document.getElementById('saveImportBtn').style.display = 'block';
     showToast(`${parsedBuildings.length} Gebäude erkannt ✓`);
   } catch(err) {
-    showToast('Fehler bei der Analyse'); console.error(err);
+    console.error('API Error:', err);
+    const m = String(err?.message||err||'');
+    if (m.includes('401') || m.includes('auth') || m.includes('invalid')) showToast('API-Key ungueltig – bitte pruefen');
+    else if (m.includes('400')) showToast('Bildfehler – anderes Foto versuchen');
+    else showToast('Fehler: ' + m.slice(0,50));
   }
   btn.disabled = false;
   btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg> ERNEUT SCANNEN`;
@@ -649,6 +714,7 @@ function showToast(msg) {
 
 seedIfEmpty();
 renderStandorte();
+updateApiKeyBanner();
 </script>
 </body>
 </html>

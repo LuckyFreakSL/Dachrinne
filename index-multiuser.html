@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dachrinnen Manager</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#111214;color:#edeae2;font-family:-apple-system,sans-serif;min-height:100vh}
+  .header{background:#1a1c1f;border-bottom:2px solid #f0a500;padding:16px 20px}
+  .header h1{color:#f0a500;font-size:28px;font-weight:700;letter-spacing:3px}
+  .header p{color:#666b74;font-size:10px;letter-spacing:1px;margin-top:2px}
+  .sync{font-size:11px;color:#4caf7d;margin-top:4px}
+  .sync.offline{color:#e05555}
+  .nav{display:flex;background:#1a1c1f;border-bottom:1px solid #2a2d32}
+  .nav button{flex:1;padding:12px;background:none;border:none;color:#666b74;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent}
+  .nav button.active{color:#f0a500;border-bottom-color:#f0a500}
+  .view{display:none;padding:16px;max-width:600px;margin:0 auto}
+  .view.active{display:block}
+  .card{background:#1a1c1f;border:1px solid #2a2d32;border-radius:12px;margin-bottom:12px;overflow:hidden;cursor:pointer}
+  .card-header{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #2a2d32}
+  .icon-box{width:40px;height:40px;border-radius:10px;background:#e05c00;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .card-name{color:#edeae2;font-size:15px;font-weight:700;letter-spacing:1px}
+  .card-addr{color:#666b74;font-size:11px;margin-top:2px}
+  .stats{display:flex;padding:10px 16px}
+  .stat{flex:1;text-align:center}
+  .stat-val{color:#f0a500;font-size:18px;font-weight:700}
+  .stat-val.green{color:#4caf7d}
+  .stat-label{color:#666b74;font-size:9px;letter-spacing:1px;margin-top:2px}
+  .prog-bg{height:3px;background:#111214}
+  .prog-fill{height:3px;background:#f0a500;transition:width 0.3s}
+  .detail-header{display:flex;align-items:center;gap:8px;background:#1a1c1f;border-bottom:2px solid #f0a500;padding:14px 12px}
+  .back-btn{background:none;border:none;color:#f0a500;font-size:24px;cursor:pointer;padding:4px}
+  .detail-title{flex:1}
+  .detail-title h2{color:#f0a500;font-size:18px;font-weight:700;letter-spacing:2px}
+  .detail-title p{color:#666b74;font-size:11px}
+  .pills{display:flex;gap:8px;padding:12px;background:#1a1c1f;border-bottom:1px solid #2a2d32}
+  .pill{flex:1;background:#111214;border:1px solid #2a2d32;border-radius:8px;padding:10px;text-align:center}
+  .pill-val{color:#f0a500;font-size:20px;font-weight:700}
+  .pill-val.green{color:#4caf7d}
+  .pill-label{color:#666b74;font-size:9px;letter-spacing:1px;margin-top:2px}
+  .day-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px}
+  .day-bar span{color:#666b74;font-size:13px}
+  .day-bar strong{color:#f0a500}
+  .day-reset{background:#e05c00;border:none;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer}
+  .section-label{color:#444950;font-size:11px;letter-spacing:3px;padding:14px 16px 6px;border-bottom:1px solid #2a2d32;font-weight:700}
+  .building-list{padding:8px 12px}
+  .bcard{background:#1a1c1f;border:1px solid #2a2d32;border-left:3px solid #e05c00;border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:6px;cursor:pointer;transition:opacity 0.2s}
+  .bcard.done{background:#131a13;border-color:#2a3f2a;border-left-color:#4caf7d;opacity:0.75}
+  .check{width:24px;height:24px;border-radius:50%;border:2px solid #e05c00;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+  .bcard.done .check{background:#4caf7d;border-color:#4caf7d;color:#fff}
+  .binfo{flex:1}
+  .bnum{color:#edeae2;font-size:16px;font-weight:700;letter-spacing:1px}
+  .bcard.done .bnum{color:#4caf7d}
+  .bmeta{color:#666b74;font-size:11px;margin-top:2px}
+  .bnote{color:#f0a500;font-size:11px;margin-top:2px}
+  .bcard.done .bnote{color:#444950}
+  .badge{background:#111214;border:1px solid #2a2d32;border-radius:6px;padding:8px;text-align:right;flex-shrink:0}
+  .badge-val{color:#f0a500;font-size:17px;font-weight:700}
+  .bcard.done .badge-val{color:#4caf7d}
+  .badge-unit{color:#666b74;font-size:9px;letter-spacing:1px}
+  .reset-btn{width:100%;background:none;border:1px solid #2a2d32;border-radius:8px;padding:12px;color:#666b74;font-size:13px;cursor:pointer;margin-top:8px}
+  .spinner{text-align:center;padding:40px;color:#666b74}
+  .online-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#4caf7d;margin-left:8px}
+  .online-dot{width:6px;height:6px;border-radius:50%;background:#4caf7d;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .user-indicator{position:fixed;bottom:80px;right:16px;background:#1a1c1f;border:1px solid #2a2d32;border-radius:20px;padding:6px 12px;font-size:11px;color:#666b74;z-index:100}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dachrinnen</h1>
+  <p>MANAGER · MEHRBENUTZERMODUS</p>
+  <div class="sync" id="syncStatus">● Verbinde...</div>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="showView('standorte')">🏠 Standorte</button>
+  <button onclick="showView('detail')" id="detailTab" style="display:none">📋 Gebäude</button>
+</div>
+
+<div id="standorteView" class="view active">
+  <div class="spinner" id="loadingSpinner">Lade Daten... ⏳</div>
+  <div id="standorteList"></div>
+</div>
+
+<div id="detailView" class="view">
+  <div id="detailContent"></div>
+</div>
+
+<div class="user-indicator" id="userIndicator"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getDatabase, ref, onValue, set, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+
+// ============================================================
+// FIREBASE CONFIG
+// Nach dem Erstellen der Firebase-Datenbank hier eintragen:
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCwUkOusSQnfOfMYhC3EOk8L6j9CA02-W0",
+  authDomain: "dachrinne-8d6d5.firebaseapp.com",
+  databaseURL: "https://dachrinne-8d6d5-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "dachrinne-8d6d5",
+  storageBucket: "dachrinne-8d6d5.firebasestorage.app",
+  messagingSenderId: "373699483206",
+  appId: "1:373699483206:web:0fbd30849096ce91e5dc47"
+};
+// ============================================================
+
+const SEED = {
+  id: 'we424',
+  name: 'WE 424 Südtondern-Kaserne',
+  addr: 'Am Tannenberg 1, 25917 Stadum',
+  buildings: [
+    {id:'1',meter:55,hoehe:'3',fallrohre:4,note:''},{id:'5',meter:62,hoehe:'6',fallrohre:4,note:''},
+    {id:'6/7',meter:71,hoehe:'6',fallrohre:8,note:''},{id:'8',meter:160,hoehe:'3',fallrohre:12,note:''},
+    {id:'12',meter:118,hoehe:'6',fallrohre:15,note:''},{id:'14',meter:157,hoehe:'3/8',fallrohre:21,note:''},
+    {id:'15',meter:68,hoehe:'6',fallrohre:6,note:''},{id:'16',meter:68,hoehe:'6',fallrohre:6,note:''},
+    {id:'17',meter:44,hoehe:'6',fallrohre:4,note:''},{id:'18',meter:26,hoehe:'3',fallrohre:2,note:''},
+    {id:'19',meter:56,hoehe:'7',fallrohre:5,note:''},{id:'20/1',meter:152,hoehe:'7',fallrohre:12,note:''},
+    {id:'20/2',meter:74,hoehe:'7',fallrohre:4,note:''},{id:'20/3',meter:36,hoehe:'3',fallrohre:4,note:''},
+    {id:'21',meter:96,hoehe:'3.6',fallrohre:8,note:''},{id:'22/1',meter:152,hoehe:'7',fallrohre:12,note:''},
+    {id:'22/2',meter:74,hoehe:'7',fallrohre:4,note:''},{id:'22/3',meter:36,hoehe:'3',fallrohre:4,note:''},
+    {id:'23',meter:100,hoehe:'3',fallrohre:11,note:''},{id:'24/1',meter:116,hoehe:'7',fallrohre:10,note:''},
+    {id:'25',meter:164,hoehe:'4',fallrohre:16,note:''},{id:'26/1',meter:159,hoehe:'7',fallrohre:12,note:''},
+    {id:'27/1,27/2',meter:202,hoehe:'3',fallrohre:12,note:''},{id:'27/3',meter:3.5,hoehe:'3',fallrohre:1,note:''},
+    {id:'28',meter:118,hoehe:'4',fallrohre:10,note:''},{id:'33',meter:75,hoehe:'7.5',fallrohre:9,note:''},
+    {id:'34',meter:64,hoehe:'4',fallrohre:6,note:''},{id:'35',meter:26,hoehe:'5',fallrohre:4,note:''},
+    {id:'36',meter:8,hoehe:'3',fallrohre:2,note:''},{id:'37',meter:77,hoehe:'3.5',fallrohre:8,note:''},
+    {id:'37b',meter:110,hoehe:'4',fallrohre:16,note:'Bürobereich'},{id:'38',meter:299,hoehe:'2,5/3/6/8',fallrohre:25,note:'var. Dachhöhen'},
+    {id:'40',meter:42,hoehe:'5.6',fallrohre:6,note:''},{id:'41',meter:127,hoehe:'7',fallrohre:8,note:''},
+    {id:'45',meter:58,hoehe:'5.5',fallrohre:4,note:''},{id:'46',meter:64,hoehe:'3',fallrohre:4,note:''},
+    {id:'47',meter:60,hoehe:'6',fallrohre:6,note:''},{id:'48',meter:60,hoehe:'6',fallrohre:6,note:''},
+    {id:'49',meter:94,hoehe:'6',fallrohre:8,note:''},{id:'50',meter:94,hoehe:'6',fallrohre:8,note:''},
+    {id:'54',meter:86,hoehe:'8.5',fallrohre:6,note:''},{id:'55',meter:24,hoehe:'3',fallrohre:2,note:''}
+  ]
+};
+
+// Zufälliger Nutzername
+const NAMES = ['Mitarbeiter A','Mitarbeiter B','Mitarbeiter C','Mitarbeiter D','Mitarbeiter E'];
+const userName = NAMES[Math.floor(Math.random() * NAMES.length)] + ' ' + Math.floor(Math.random()*100);
+document.getElementById('userIndicator').textContent = '👤 ' + userName;
+
+let app, db;
+let state = { states: {}, days: {} };
+let standorte = [SEED];
+let currentStandortId = null;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  initFirebase();
+} catch(e) {
+  document.getElementById('syncStatus').textContent = '⚠ Firebase nicht konfiguriert – lokaler Modus';
+  document.getElementById('syncStatus').className = 'sync offline';
+  initLocal();
+}
+
+function initLocal() {
+  try { state = JSON.parse(localStorage.getItem('dr_state') || '{"states":{},"days":{}}'); } catch(e){}
+  document.getElementById('loadingSpinner').style.display = 'none';
+  renderStandorte();
+}
+
+function initFirebase() {
+  const stateRef = ref(db, 'state');
+  onValue(stateRef, (snapshot) => {
+    if (snapshot.exists()) {
+      state = snapshot.val();
+    } else {
+      state = { states: {}, days: {} };
+    }
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('syncStatus').textContent = '● Live · Alle sehen denselben Stand';
+    document.getElementById('syncStatus').className = 'sync';
+    renderStandorte();
+    if (currentStandortId) renderDetail(currentStandortId);
+  }, (error) => {
+    document.getElementById('syncStatus').textContent = '● Offline – Verbindungsfehler';
+    document.getElementById('syncStatus').className = 'sync offline';
+    initLocal();
+  });
+}
+
+function saveState() {
+  if (db) {
+    set(ref(db, 'state'), state);
+  } else {
+    localStorage.setItem('dr_state', JSON.stringify(state));
+  }
+}
+
+function toggle(standortId, buildingId) {
+  const loc = standorte.find(s => s.id === standortId);
+  const b = loc?.buildings.find(b => b.id === buildingId);
+  if (!b) return;
+  if (!state.states[standortId]) state.states[standortId] = {};
+  if (!state.days[standortId]) state.days[standortId] = { meter: 0, ids: [] };
+  if (state.states[standortId][buildingId]) {
+    delete state.states[standortId][buildingId];
+    state.days[standortId].meter = Math.max(0, (state.days[standortId].meter || 0) - b.meter);
+    state.days[standortId].ids = (state.days[standortId].ids || []).filter(x => x !== buildingId);
+  } else {
+    state.states[standortId][buildingId] = true;
+    if (!(state.days[standortId].ids || []).includes(buildingId)) {
+      state.days[standortId].meter = (state.days[standortId].meter || 0) + b.meter;
+      if (!state.days[standortId].ids) state.days[standortId].ids = [];
+      state.days[standortId].ids.push(buildingId);
+    }
+  }
+  saveState();
+}
+
+function renderStandorte() {
+  const el = document.getElementById('standorteList');
+  el.innerHTML = standorte.map(loc => {
+    const st = state.states?.[loc.id] || {};
+    const day = state.days?.[loc.id] || { meter: 0 };
+    const total = loc.buildings.length;
+    const done = loc.buildings.filter(b => st[b.id]).length;
+    const totalM = loc.buildings.reduce((a,b) => a+b.meter, 0);
+    const doneM = loc.buildings.filter(b => st[b.id]).reduce((a,b) => a+b.meter, 0);
+    const pct = total ? done/total*100 : 0;
+    return `<div class="card" onclick="openDetail('${loc.id}')">
+      <div class="card-header">
+        <div class="icon-box">🏛️</div>
+        <div style="flex:1">
+          <div class="card-name">${loc.name}</div>
+          <div class="card-addr">${loc.addr}</div>
+        </div>
+        <span style="color:#444950">›</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-val">${done}/${total}</div><div class="stat-label">GEBÄUDE</div></div>
+        <div class="stat"><div class="stat-val green">${doneM}</div><div class="stat-label">METER ✓</div></div>
+        <div class="stat"><div class="stat-val">${totalM-doneM}</div><div class="stat-label">OFFEN</div></div>
+        <div class="stat"><div class="stat-val">${day.meter||0}</div><div class="stat-label">HEUTE</div></div>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderDetail(id) {
+  const loc = standorte.find(s => s.id === id);
+  if (!loc) return;
+  const st = state.states?.[id] || {};
+  const day = state.days?.[id] || { meter: 0 };
+  const totalM = loc.buildings.reduce((a,b) => a+b.meter, 0);
+  const doneM = loc.buildings.filter(b => st[b.id]).reduce((a,b) => a+b.meter, 0);
+  const done = loc.buildings.filter(b => st[b.id]).length;
+  const pct = loc.buildings.length ? done/loc.buildings.length*100 : 0;
+  const pending = loc.buildings.filter(b => !st[b.id]);
+  const doneB = loc.buildings.filter(b => st[b.id]);
+
+  const bcard = (b) => {
+    const isDone = !!st[b.id];
+    return `<div class="bcard ${isDone?'done':''}" onclick="toggleB('${id}','${b.id}')">
+      <div class="check">${isDone?'✓':''}</div>
+      <div class="binfo">
+        <div class="bnum">Gebäude ${b.id}</div>
+        <div class="bmeta">Höhe ${b.hoehe}m · ${b.fallrohre} Fallrohre</div>
+        ${b.note?`<div class="bnote">${b.note}</div>`:''}
+      </div>
+      <div class="badge"><div class="badge-val">${b.meter}</div><div class="badge-unit">LFD.M</div></div>
+    </div>`;
+  };
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-header">
+      <button class="back-btn" onclick="goBack()">‹</button>
+      <div class="detail-title">
+        <h2>${loc.name}</h2>
+        <p>${loc.addr}</p>
+      </div>
+    </div>
+    <div class="pills">
+      <div class="pill"><div class="pill-val">${done}/${loc.buildings.length}</div><div class="pill-label">GEBÄUDE</div></div>
+      <div class="pill"><div class="pill-val green">${doneM}</div><div class="pill-label">METER ✓</div></div>
+      <div class="pill"><div class="pill-val">${totalM-doneM}</div><div class="pill-label">OFFEN</div></div>
+    </div>
+    <div class="prog-bg" style="margin:0 16px;border-radius:99px;overflow:hidden">
+      <div class="prog-fill" style="width:${pct}%"></div>
+    </div>
+    <div class="day-bar">
+      <span>Heute: <strong>${day.meter||0}</strong> lfd. Meter</span>
+      <button class="day-reset" onclick="resetDay('${id}')">↺ Tag reset</button>
+    </div>
+    <div class="section-label">OFFEN (${pending.length})</div>
+    <div class="building-list">${pending.map(bcard).join('')}</div>
+    ${doneB.length ? `<div class="section-label">ERLEDIGT (${doneB.length})</div><div class="building-list">${doneB.map(bcard).join('')}</div>` : ''}
+    <div style="padding:16px">
+      <button class="reset-btn" onclick="resetAll('${id}')">Alle zurücksetzen</button>
+    </div>
+  `;
+}
+
+window.openDetail = (id) => {
+  currentStandortId = id;
+  showView('detail');
+  document.getElementById('detailTab').style.display = 'block';
+  renderDetail(id);
+};
+
+window.goBack = () => {
+  showView('standorte');
+  document.getElementById('detailTab').style.display = 'none';
+  currentStandortId = null;
+};
+
+window.toggleB = (standortId, buildingId) => {
+  toggle(standortId, buildingId);
+  if (!db) { renderStandorte(); renderDetail(standortId); }
+};
+
+window.resetDay = (id) => {
+  if (!confirm('Tageszähler zurücksetzen?')) return;
+  if (!state.days) state.days = {};
+  state.days[id] = { meter: 0, ids: [] };
+  saveState();
+  if (!db) { renderStandorte(); renderDetail(id); }
+};
+
+window.resetAll = (id) => {
+  if (!confirm('Alle Gebäude zurücksetzen?')) return;
+  if (!state.states) state.states = {};
+  if (!state.days) state.days = {};
+  state.states[id] = {};
+  state.days[id] = { meter: 0, ids: [] };
+  saveState();
+  if (!db) { renderStandorte(); renderDetail(id); }
+};
+
+window.showView = (name) => {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(name+'View').classList.add('active');
+  document.querySelector(`.nav button[onclick="showView('${name}')"]`)?.classList.add('active');
+};
+</script>
+
+<!-- SETUP ANLEITUNG (nur sichtbar wenn Firebase noch nicht konfiguriert) -->
+<div id="setupBox" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a1c1f;border-top:2px solid #f0a500;padding:16px;max-height:50vh;overflow-y:auto;z-index:999">
+  <h3 style="color:#f0a500;margin-bottom:8px">⚙️ Firebase einrichten</h3>
+  <p style="color:#666b74;font-size:13px;line-height:1.6">
+    1. <a href="https://console.firebase.google.com" target="_blank" style="color:#f0a500">console.firebase.google.com</a> öffnen<br>
+    2. „Projekt erstellen" → Name: „dachrinnen"<br>
+    3. „Realtime Database" → „Datenbank erstellen" → Testmodus<br>
+    4. „Projekteinstellungen" → „Web-App hinzufügen" → Config kopieren<br>
+    5. In dieser Datei die firebaseConfig ersetzen
+  </p>
+  <button onclick="document.getElementById('setupBox').style.display='none'" style="margin-top:8px;background:#f0a500;border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer">Verstanden</button>
+</div>
+
+<script>
+  // Setup-Box anzeigen wenn Placeholder noch drin ist
+  if (document.querySelector('script[type="module"]').textContent.includes('PLACEHOLDER')) {
+    document.getElementById('setupBox').style.display = 'block';
+  }
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -487,6 +487,8 @@ function applyAbwesenheitSpannen(){
     });
   });
 }
+function isAbwesend(maId,ds){return !!(S.abwesenheit[ds]&&S.abwesenheit[ds][maId]);}
+function getAbwGrund(maId,ds){return S.abwesenheit[ds]&&S.abwesenheit[ds][maId]?S.abwesenheit[ds][maId].grund:null;}
 // S.abwesenheitSpannen = [{id, maId, grund, von, bis, notiz}]
 
 function addAbwesenheitSpanne(){
